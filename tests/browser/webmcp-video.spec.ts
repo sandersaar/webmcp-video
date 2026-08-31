@@ -158,6 +158,41 @@ test("keeps normal controls when the WebMCP runtime is missing", async ({ page }
   await expect(page.getByRole("button", { name: "Find exact moment" })).toBeVisible();
 });
 
+test("refreshes an expired visible result before context and play", async ({ page }) => {
+  await page.addInitScript(() => {
+    const actualNow = Date.now.bind(Date);
+    let offsetMilliseconds = 0;
+    Date.now = () => actualNow() + offsetMilliseconds;
+    Object.defineProperty(window, "__advanceWebMcpVideoClock", {
+      configurable: true,
+      value: (milliseconds: number) => { offsetMilliseconds += milliseconds; },
+    });
+  });
+  await installRuntime(page);
+  await page.goto(demoUrl);
+
+  await page.getByRole("button", { name: "Find exact moment" }).click();
+  await expect(page.getByRole("heading", { name: "Top 10 Tech Experiences in China" })).toBeVisible();
+
+  await page.evaluate(() => {
+    (window as unknown as { __advanceWebMcpVideoClock(milliseconds: number): void })
+      .__advanceWebMcpVideoClock(6 * 60 * 1000);
+  });
+  await page.getByRole("button", { name: "Show context" }).click();
+  await expect(page.getByText("A motorized exoskeleton supports the presenter during an outdoor run.")).toBeVisible();
+  await expect(page.getByText("rights_denied")).toHaveCount(0);
+
+  await page.evaluate(() => {
+    (window as unknown as { __advanceWebMcpVideoClock(milliseconds: number): void })
+      .__advanceWebMcpVideoClock(6 * 60 * 1000);
+  });
+  await page.getByRole("button", { name: "Play moment" }).click();
+  await expect(page.locator("[data-play-status='sought']")).toHaveText("Local player result: sought.");
+  await expect(page.getByText("rights_denied")).toHaveCount(0);
+  await expect(page.locator("#audit-panel")).toContainText("allowed");
+  await expect(page.locator("#audit-panel")).toContainText("46");
+});
+
 test("does not derive needs_user from a provider autoplay notification", async ({ page }) => {
   await installRuntime(page, { state: 2, seconds: 0, lateAutoplayBlocked: true });
   await page.goto(demoUrl);
