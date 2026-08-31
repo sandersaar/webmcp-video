@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self'; connect-src 'self' ws://127.0.0.1:4173; frame-src https://www.youtube.com https://www.youtube-nocookie.com; img-src 'self'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebMCP Video</title>
+    <link rel="stylesheet" href="/src/demo/styles.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Three page tools. One exact moment.</p>
+      <h1>WebMCP Video</h1>
+      <p>Ask about this catalog, inspect the evidence, then play or open the exact moment.</p>
+      <p id="runtime-status" role="status">Loading the local demo.</p>
+
+      <section class="layout" aria-label="Video and tools">
+        <div>
+          <div id="official-player" aria-label="Official YouTube player"></div>
+          <section id="flow-panel" aria-label="Local tool flow"></section>
+        </div>
+        <aside id="audit-panel" aria-live="polite">
+          <h2>Local demo audit</h2>
+          <p>This session has no tool calls yet.</p>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/demo/main.ts" data-webmcp-config="/page-tools.json"></script>
+  </body>
+</html>

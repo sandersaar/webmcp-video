@@ -1,6 +1,7 @@
 export * from "#video/adapter/handlers";
 export * from "#video/adapter/lifecycle";
 export * from "#video/adapter/page-config";
+export * from "#video/adapter/player";
 export * from "#video/adapter/reference-vault";
 export * from "#video/adapter/register-tools";
 export * from "#video/adapter/results";

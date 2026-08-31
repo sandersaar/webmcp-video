@@ -1,0 +1,11 @@
+{
+  "contract_version": "1.0",
+  "page_mapping": "page_public_demo_v1",
+  "enabled_tools": [
+    "search_this_catalog",
+    "get_moment_context",
+    "play_moment"
+  ],
+  "kill_switch": false,
+  "fixture_path": "/fixtures/rights-safe-catalog.v1.json"
+}

@@ -55,6 +55,11 @@ export class FixtureRightsStore {
     this.controllers.set(fixtureKey, controller);
   }
 
+  revokeReference(momentRef: string): void {
+    const authorized = this.authorize(momentRef);
+    this.setState(authorized.moment.fixture_key, "revoked");
+  }
+
   authorize(momentRef: string): Readonly<{
     video: FixtureVideo;
     moment: FixtureMoment;

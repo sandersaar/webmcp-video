@@ -1,4 +1,5 @@
 import { assertTruthfulPlayerResult, momentResult, safeResult } from "./results";
+import { isSupersededPlayError } from "./player";
 import type { AuditEntry, FixtureCatalog, OfficialPlayer, PageConfig, PlayerResult, ToolHandlers, ToolId } from "./types";
 import { FixtureRightsStore, RightsDeniedError } from "#video/fixture/rights-store";
 
@@ -138,6 +139,7 @@ export function createFixtureHandlers(input: Readonly<{
           open_url: authorized.authorization.open_url,
         }, 1200);
       } catch (error) {
+        if (isSupersededPlayError(error)) throw error;
         const denied = error instanceof RightsDeniedError;
         input.audit({
           ...entry,
