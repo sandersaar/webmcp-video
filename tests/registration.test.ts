@@ -90,4 +90,40 @@ describe("tool registration", () => {
       lifecycle: new PageToolLifecycle(),
     })).resolves.toEqual({ supported: false, registered: [] });
   });
+
+  it("normalizes an omitted host context and combines a supplied cancellation signal", async () => {
+    const calls: AbortSignal[] = [];
+    let releaseSecond: (() => void) | undefined;
+    const contextHandlers: ToolHandlers = {
+      search_this_catalog: vi.fn(async (_value, context) => {
+        calls.push(context.signal);
+        if (calls.length === 2) await new Promise<void>((resolve) => { releaseSecond = resolve; });
+        return { moments: [] };
+      }),
+      get_moment_context: handler,
+      play_moment: handler,
+    };
+    const definitions: ModelContextTool[] = [];
+    const document = {
+      modelContext: {
+        registerTool: vi.fn(async (definition: ModelContextTool) => { definitions.push(definition); }),
+      },
+    } as unknown as DocumentWithModelContext;
+    const lifecycle = new PageToolLifecycle();
+    await registerPageTools({ document, config, handlers: contextHandlers, lifecycle });
+
+    await expect(definitions[0]?.execute({ query: "robotic massage" })).resolves.toEqual({ moments: [] });
+    expect(calls[0]?.aborted).toBe(false);
+
+    const caller = new AbortController();
+    const suppliedExecution = definitions[0]?.execute(
+      { query: "robotic massage" },
+      { signal: caller.signal },
+    );
+    await vi.waitFor(() => expect(calls).toHaveLength(2));
+    caller.abort("caller_cancelled");
+    expect(calls[1]?.aborted).toBe(true);
+    releaseSecond?.();
+    await expect(suppliedExecution).resolves.toEqual({ moments: [] });
+  });
 });

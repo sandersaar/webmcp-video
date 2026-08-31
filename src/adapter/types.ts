@@ -27,7 +27,7 @@ export type ModelContextTool = Readonly<{
     readOnlyHint: boolean;
     untrustedContentHint: boolean;
   }>;
-  execute: ToolHandler;
+  execute(value: unknown, context?: ToolExecutionContext): Promise<unknown>;
 }>;
 
 export type ModelContext = Readonly<{

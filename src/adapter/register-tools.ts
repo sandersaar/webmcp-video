@@ -29,6 +29,38 @@ function hasExactTools(config: PageConfig): boolean {
     TOOL_IDS.every((toolId, index) => config.enabled_tools[index] === toolId);
 }
 
+function isAbortSignal(value: unknown): value is AbortSignal {
+  return Boolean(value) && typeof value === "object" &&
+    typeof (value as AbortSignal).aborted === "boolean" &&
+    typeof (value as AbortSignal).addEventListener === "function";
+}
+
+function combineExecutionSignal(
+  executionSignal: AbortSignal | undefined,
+  lifecycleSignal: AbortSignal,
+): Readonly<{ signal: AbortSignal; cleanup(): void }> {
+  if (!isAbortSignal(executionSignal) || executionSignal === lifecycleSignal) {
+    return { signal: lifecycleSignal, cleanup: () => undefined };
+  }
+  const controller = new AbortController();
+  const abortFrom = (source: AbortSignal) => {
+    if (!controller.signal.aborted) controller.abort(source.reason);
+  };
+  const executionAbort = () => abortFrom(executionSignal);
+  const lifecycleAbort = () => abortFrom(lifecycleSignal);
+  if (executionSignal.aborted) executionAbort();
+  else executionSignal.addEventListener("abort", executionAbort, { once: true });
+  if (lifecycleSignal.aborted) lifecycleAbort();
+  else lifecycleSignal.addEventListener("abort", lifecycleAbort, { once: true });
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      executionSignal.removeEventListener("abort", executionAbort);
+      lifecycleSignal.removeEventListener("abort", lifecycleAbort);
+    },
+  };
+}
+
 export async function registerPageTools(input: Readonly<{
   document: DocumentWithModelContext;
   config: PageConfig;
@@ -59,11 +91,18 @@ export async function registerPageTools(input: Readonly<{
           readOnlyHint: tool.readOnlyHint,
           untrustedContentHint: tool.untrustedContentHint,
         },
-        execute: async (value, context) => validateToolResult(
-          tool.id,
-          await input.handlers[tool.id](value, context),
-          tool.maxOutputCharacters,
-        ),
+        execute: async (value, context) => {
+          const combined = combineExecutionSignal(context?.signal, registration.signal);
+          try {
+            return validateToolResult(
+              tool.id,
+              await input.handlers[tool.id](value, { signal: combined.signal }),
+              tool.maxOutputCharacters,
+            );
+          } finally {
+            combined.cleanup();
+          }
+        },
       }, { signal: registration.signal });
       registered.push(tool.id);
     }
