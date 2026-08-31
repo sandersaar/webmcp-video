@@ -7,7 +7,7 @@ Try the live demo: [webmcp-video.vercel.app](https://webmcp-video.vercel.app)
 The page gives an AI three tools through `document.modelContext`:
 
 1. `search_this_catalog` finds matching moments and returns a `moment_ref` for each result.
-2. `get_moment_context` explains one result. It does not move the player.
+2. `get_moment_context` explains one result. It does not change the player.
 3. `play_moment` gets the official player ready at that moment.
 
 The repository makes no model calls. It has no backend and needs no secrets.
@@ -49,7 +49,7 @@ Tool results include no raw stream URLs. They include one public link that opens
 
 The result comes from direct video ID, time, and player-state checks. Player events only tell the page when to check again.
 
-A new playback request cancels an older one. Only the newest request can move the player or report success.
+A new playback request cancels an older one. Only the newest request can update the player or report success.
 
 Each request has one three-second limit. Success needs two matching checks at least 100 milliseconds apart. The page sends one first command and at most two corrections. It never starts or pauses playback for the user.
 
