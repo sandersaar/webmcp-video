@@ -14,7 +14,7 @@
     {
       "id": "get_moment_context",
       "title": "Get moment context",
-      "description": "Explain one search result using its moment_ref. Does not move the player.",
+      "description": "Explain one search result using its moment_ref. This tool does not change the player.",
       "inputSchema": "schemas/get_moment_context.input.schema.json",
       "resultSchema": "schemas/get_moment_context.result.schema.json",
       "readOnlyHint": true,
@@ -24,7 +24,7 @@
     {
       "id": "play_moment",
       "title": "Play moment",
-      "description": "Move or prepare the page's video player at an exact moment. Use a moment_ref from search_this_catalog.",
+      "description": "Get the page's official video player ready at an exact moment. Use a moment_ref from search_this_catalog.",
       "inputSchema": "schemas/play_moment.input.schema.json",
       "resultSchema": "schemas/play_moment.result.schema.json",
       "readOnlyHint": false,

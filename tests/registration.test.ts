@@ -24,8 +24,8 @@ describe("tool registration", () => {
     expect(manifest.tools.map((tool) => tool.id)).toEqual(config.enabled_tools);
     expect(manifest.tools.map((tool) => tool.description)).toEqual([
       "Search this page's video catalog. Returns matching moments and a moment_ref for each result.",
-      "Explain one search result using its moment_ref. Does not move the player.",
-      "Move or prepare the page's video player at an exact moment. Use a moment_ref from search_this_catalog.",
+      "Explain one search result using its moment_ref. This tool does not change the player.",
+      "Get the page's official video player ready at an exact moment. Use a moment_ref from search_this_catalog.",
     ]);
     expect(manifest.tools.map((tool) => tool.maxOutputCharacters)).toEqual([1500, 1500, 1200]);
     expect(manifest.tools.every((tool) => tool.maxOutputCharacters <= 1500)).toBe(true);
