@@ -1,12 +1,14 @@
 # WebMCP Video
 
-WebMCP Video is a standalone, page-scoped example for finding and playing exact video moments.
+WebMCP Video is a small working example. An AI can search video moments, explain one, and move the official YouTube player there.
 
-It registers three top-level tools through `document.modelContext`:
+Try the live demo: [webmcp-video.vercel.app](https://webmcp-video.vercel.app)
 
-1. `search_this_catalog` finds matching video moments and returns a `moment_ref` for each result.
+The page gives an AI three tools through `document.modelContext`:
+
+1. `search_this_catalog` finds matching moments and returns a `moment_ref` for each result.
 2. `get_moment_context` explains one result. It does not move the player.
-3. `play_moment` moves or prepares the official player at that exact moment.
+3. `play_moment` moves or prepares the official player at that moment.
 
 The repository makes no model calls. It has no backend and needs no secrets.
 
@@ -23,62 +25,62 @@ pnpm dev
 
 Open `http://127.0.0.1:5173/examples/plain-html/`.
 
-The page still offers local controls when WebMCP is unavailable.
+The page still has local controls when WebMCP is unavailable.
 
-## The tool chain
+## How the tools work
 
-Search returns an opaque, random reference with an exact start and end time.
+Search returns a random, short-lived reference with an exact start and end time.
 
-The reference expires after five minutes. It is bound to one page mapping and one rights generation.
+The reference expires after five minutes. It only works on the page and with the current rights setting that created it.
 
-Context and playback each perform a fresh authorization check.
+Context and playback check the rights setting again before they act.
 
-The browser never accepts page scope, video scope, provider scope, or a network endpoint from tool input.
+The browser cannot choose the creator, video, player service, or API endpoint. Those details come from fixed page settings.
 
-Tool results expose no internal identifiers or media delivery locators. They include one public link for opening the selected moment.
+Tool results include no raw stream URLs. They include one public link that opens the selected moment.
 
-## Truthful playback
+## Playback reports only what the browser sees
 
-`play_moment` returns one observed local state:
+`play_moment` returns one local player state:
 
 - `sought`: the loaded player reached the requested time.
 - `cued`: the requested video and time are ready.
-- `fallback`: playback was not proven.
+- `fallback`: the page could not prove the result.
 
-Results come from stable, direct video ID, time, and state observations. Provider events are notifications only.
+The result comes from direct video ID, time, and player-state checks. Player events only tell the page when to check again.
 
-New playback supersedes older playback. Only the latest operation can command the player or publish a success. A superseded authorized operation records one cancellation audit entry.
+A new playback request cancels an older one. Only the newest request can move the player or report success.
 
-Each playback invocation has one three-second deadline. It covers readiness, commands, observations, corrections, and settlement. Success requires two matching direct observations that stay stable for 100 milliseconds. The player sends one initial navigation command and at most two corrections. It does not start or pause user playback.
+Each request has one three-second limit. Success needs two matching checks at least 100 milliseconds apart. The page sends one first command and at most two corrections. It never starts or pauses playback for the user.
 
 ## Rights and assets
 
-The fixture checks active and revoked states before playback and after asynchronous player work.
+The demo checks active and revoked states before playback and after player work.
 
-The build contains no video, image, audio, font, thumbnail, transcript file, or media segment.
+The build contains no video, image, audio, font, thumbnail, transcript, or media file.
 
-See [ASSET-RIGHTS.md](ASSET-RIGHTS.md) for the complete ledger.
+See [ASSET-RIGHTS.md](ASSET-RIGHTS.md) for the complete list.
 
-## Audit evidence
+## Audit record
 
 The page shows a `Local demo audit` record for the current browser session.
 
-This record is not persistent. It is not production service audit evidence.
+This record is not stored. It is not a production audit record.
 
 ## Verification
 
-Search and context results each stay within 1500 characters. Playback results stay within 1200 characters.
+Search and context results stay within 1,500 characters. Playback results stay within 1,200 characters.
 
-`pnpm verify:commit` runs pinned-version checks, TypeScript, unit tests, build, Chromium tests, and release scans.
+`pnpm verify:commit` checks pinned versions, types, unit tests, the build, Chromium tests, and release files.
 
-See [JUDGING.md](JUDGING.md) for exact review steps and clean-clone commands.
+See [JUDGING.md](JUDGING.md) for the exact review steps and clean-clone commands.
 
 ## Limits
 
-Automated Chromium tests use a deterministic YouTube API driver. They prove browser behavior, not live provider availability.
+Automated Chromium tests use a controlled YouTube player so each run is repeatable. They do not prove that YouTube will always be available.
 
-A supported WebMCP host must still discover and invoke the tools before anyone claims supported-host proof.
+A supported WebMCP browser must still discover and call the three tools.
 
 ## License
 
-The code is available under Apache-2.0. Platform media remains subject to its owner permissions and YouTube terms.
+The code uses the Apache-2.0 license. The linked videos remain subject to their owners' permissions and YouTube's terms.

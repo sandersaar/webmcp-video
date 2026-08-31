@@ -1,12 +1,36 @@
 # Judge guide
 
+## Fast live review
+
+Open [webmcp-video.vercel.app](https://webmcp-video.vercel.app) in ChatGPT's in-app browser or another supported WebMCP browser.
+
+Use this prompt:
+
+```text
+Use only this page's Site Tools.
+
+Search this catalog for "motorized exoskeleton" with limit 1.
+Use the returned moment_ref to get the moment context.
+Then use the same moment_ref to play the moment.
+
+Report each tool name and result. Do not answer from visible page text alone.
+```
+
+The result starts at 46 seconds. The context identifies the device and the next scene. The player should report `cued` or `sought`. Press play in the official player to watch it.
+
+## Expected tools
+
+The page must show exactly these tools:
+
+- `search_this_catalog`
+- `get_moment_context`
+- `play_moment`
+
+Call them in that order. Pass the returned `moment_ref` to the next tool without changing it.
+
 ## Five-minute local review
 
-1. Confirm Node.js reports `v22.23.1`.
-2. Confirm pnpm reports `10.31.0`.
-3. Run the frozen installation and complete verification.
-4. Start the local page.
-5. Open `http://127.0.0.1:5173/examples/plain-html/`.
+Use Node.js 22.23.1 and pnpm 10.31.0.
 
 ```sh
 node --version
@@ -17,35 +41,19 @@ pnpm verify:commit
 pnpm dev
 ```
 
-Use the default `motorized exoskeleton` search. The result starts at 46 seconds.
+Open `http://127.0.0.1:5173/examples/plain-html/`.
 
-Open its context. The evidence identifies the device and the following scene.
+Use the default `motorized exoskeleton` search. Open its context, then play the moment.
 
-Play the moment. Confirm the page reports an observed local state and keeps the public open link.
+## What the browser tests cover
 
-## Supported WebMCP runtime
+Playwright runs Chromium against the built page.
 
-Open the same page in a supported top-level runtime.
+The tests cover the three-tool chain, player movement, one three-second limit, stable player checks, late events, revoked rights, overlapping requests, missing WebMCP support, and old requests that finish late.
 
-Confirm discovery shows exactly these tools:
+The tests use a controlled YouTube player. They do not contact or test the live YouTube service.
 
-- `search_this_catalog`
-- `get_moment_context`
-- `play_moment`
-
-Invoke them in that order. Reuse the returned opaque reference without editing it.
-
-Supported-host discovery is separate from local automated proof.
-
-## Browser evidence
-
-Playwright runs real Chromium against the page.
-
-The suite covers chaining, cueing, one absolute playback deadline, a 100-millisecond settlement guard, bounded correction, late provider notifications, revocation, overlapping plays, missing runtime, and stale suppression.
-
-The suite injects a deterministic YouTube API driver. It does not contact or validate the live provider.
-
-## Exact clean-clone commands
+## Clean-clone check
 
 Run these commands from the repository root after committing all intended files:
 
@@ -63,12 +71,12 @@ git clone --no-local "$PWD" "$clean_root/repo"
 )
 ```
 
-The repository also provides `pnpm verify:clean-clone` for the same gate.
+The repository also provides `pnpm verify:clean-clone`.
 
-## Evidence labels
+## What each test proves
 
-- Unit proof validates isolated contracts and race behavior.
-- Chromium proof validates local browser integration with a deterministic player driver.
-- Manual provider proof requires the live official player.
-- Supported-host proof requires observed host discovery and invocation.
-- Local demo audit evidence is not production audit evidence.
+- Unit tests check one function or rule at a time.
+- Chromium tests check the page with a controlled player.
+- Live player testing checks the official YouTube player.
+- Supported-browser testing checks real tool discovery and calls.
+- The local demo audit is not a stored production audit record.
