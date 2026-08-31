@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const skipped = new Set([".git", ".local", "dist", "node_modules", "playwright-report", "test-results"]);
+const skipped = new Set([".git", ".local", "node_modules", "playwright-report", "test-results"]);
 
 async function walk(directory) {
   const files = [];
@@ -24,6 +24,7 @@ const internalCheckout = `${internalName}-base`;
 const privateRevision = ["573b", "ed7b"].join("");
 const unsafePatterns = [
   [/\/(?:Users|private\/tmp|home)\//, "absolute internal path"],
+  [new RegExp(internalName, "i"), "internal repository name"],
   [new RegExp(internalCheckout, "i"), "internal checkout name"],
   [new RegExp(privateRevision, "i"), "private source revision"],
   [/(?:authorization\s*:\s*["']bearer|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|AKIA[0-9A-Z]{16})/i, "credential"],
@@ -55,7 +56,7 @@ try {
 } catch {
   history = "";
 }
-for (const [pattern, label] of unsafePatterns.slice(0, 3)) {
+for (const [pattern, label] of unsafePatterns.slice(0, 4)) {
   if (pattern.test(history)) failures.push(`Git history: ${label}`);
 }
 if (failures.length > 0) throw new Error(`Public boundary failed:\n${failures.join("\n")}`);

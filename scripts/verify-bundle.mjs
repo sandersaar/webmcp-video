@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, relative } from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,6 +17,10 @@ async function walk(directory) {
 }
 
 await walk(dist);
+const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split("\n").filter(Boolean);
+for (const path of tracked) {
+  if (forbiddenExtensions.has(extname(path).toLowerCase())) throw new Error(`External media tracked: ${path}`);
+}
 for (const path of files) {
   if (forbiddenExtensions.has(extname(path).toLowerCase())) throw new Error(`External media bundled: ${relative(root, path)}`);
   if ((await stat(path)).size > 500_000) throw new Error(`Unexpected large bundle file: ${relative(root, path)}`);

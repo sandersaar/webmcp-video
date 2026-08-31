@@ -1,6 +1,8 @@
 import type { FixtureMoment, FixtureVideo, PlayerResult } from "./types";
+import type { ToolId } from "./types";
+import { isOpaqueMomentReference } from "./reference-vault";
 
-const blockedFieldParts = ["fixturekey", "manifest", "provider", "signature", "storage", "stream", "token", "videoid"];
+const blockedFieldParts = ["constructor", "fixturekey", "manifest", "provider", "proto", "signature", "storage", "stream", "token", "videoid"];
 const allowedUrlField = "open_url";
 
 function invalidResult(): never {
@@ -21,6 +23,9 @@ function copyJson(value: unknown, ancestors = new Set<object>()): unknown {
   try {
     if (Array.isArray(value)) {
       if (Object.getPrototypeOf(value) !== Array.prototype) invalidResult();
+      const ownKeys = Reflect.ownKeys(value);
+      if (ownKeys.some((key) => typeof key !== "string" ||
+          (key !== "length" && !/^(?:0|[1-9]\d*)$/.test(key)))) invalidResult();
       const copied = [];
       for (let index = 0; index < value.length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
@@ -90,6 +95,86 @@ export function safeResult<T>(value: T, maximumCharacters: number): T {
   assertSafeResult(copied);
   if (JSON.stringify(copied).length > maximumCharacters) throw new Error("tool_result_too_large");
   return copied;
+}
+
+function exactObject(value: unknown, keys: readonly string[]): Record<string, unknown> {
+  if (!isPlainObject(value) || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...keys].sort())) {
+    invalidResult();
+  }
+  return value;
+}
+
+function requiredString(object: Record<string, unknown>, key: string, maximum = 1000): string {
+  const value = object[key];
+  if (typeof value !== "string" || value.length === 0 || value.length > maximum) invalidResult();
+  return value;
+}
+
+function requiredNumber(object: Record<string, unknown>, key: string): number {
+  const value = object[key];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) invalidResult();
+  return value;
+}
+
+function validateExpiry(value: string): void {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) invalidResult();
+}
+
+function validateMoment(value: unknown, context: boolean): void {
+  const keys = ["end_seconds", "evidence", "expires_at", "moment_ref", "open_url", "start_seconds", "title"];
+  if (context) keys.push("visual_description");
+  const object = exactObject(value, keys);
+  const start = requiredNumber(object, "start_seconds");
+  const end = requiredNumber(object, "end_seconds");
+  if (end <= start) invalidResult();
+  requiredString(object, "title", 300);
+  requiredString(object, "evidence", 2000);
+  if (context) requiredString(object, "visual_description", 2000);
+  const momentRef = requiredString(object, "moment_ref", 26);
+  if (!isOpaqueMomentReference(momentRef)) invalidResult();
+  validateExpiry(requiredString(object, "expires_at", 30));
+  const openUrl = requiredString(object, "open_url", 300);
+  validateOpenUrl(openUrl);
+  const linkedSecond = Number(new URL(openUrl).searchParams.get("t")?.replace(/s$/, ""));
+  if (linkedSecond !== start) invalidResult();
+}
+
+export function validateToolResult(toolId: ToolId, result: unknown, maximumCharacters: number): unknown {
+  const canonical = safeResult(result, maximumCharacters);
+  if (toolId === "search_this_catalog") {
+    const object = exactObject(canonical, ["moments"]);
+    if (!Array.isArray(object.moments) || object.moments.length > 5) invalidResult();
+    object.moments.forEach((moment) => validateMoment(moment, false));
+    return canonical;
+  }
+  if (toolId === "get_moment_context") {
+    validateMoment(canonical, true);
+    return canonical;
+  }
+  const object = exactObject(canonical, [
+    "expires_at",
+    "moment_ref",
+    "observed_seconds",
+    "open_url",
+    "player_state",
+    "requested_seconds",
+    "status",
+  ]);
+  const status = requiredString(object, "status") as PlayerResult["status"];
+  const playerState = requiredString(object, "player_state") as PlayerResult["player_state"];
+  const requestedSeconds = requiredNumber(object, "requested_seconds");
+  const observed = object.observed_seconds;
+  if (observed !== null && (typeof observed !== "number" || !Number.isFinite(observed) || observed < 0)) invalidResult();
+  assertTruthfulPlayerResult({ status, player_state: playerState, observed_seconds: observed as number | null }, requestedSeconds);
+  const momentRef = requiredString(object, "moment_ref", 26);
+  if (!isOpaqueMomentReference(momentRef)) invalidResult();
+  validateExpiry(requiredString(object, "expires_at", 30));
+  const openUrl = requiredString(object, "open_url", 300);
+  validateOpenUrl(openUrl);
+  const linkedSecond = Number(new URL(openUrl).searchParams.get("t")?.replace(/s$/, ""));
+  if (linkedSecond !== requestedSeconds) invalidResult();
+  return canonical;
 }
 
 export function officialMomentUrl(youtubeVideoId: string, startSeconds: number): string {

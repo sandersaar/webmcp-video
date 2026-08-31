@@ -3,6 +3,7 @@ import contextInput from "#video/contracts/schemas/get_moment_context.input.sche
 import playInput from "#video/contracts/schemas/play_moment.input.schema.json";
 import searchInput from "#video/contracts/schemas/search_this_catalog.input.schema.json";
 import type { PageToolLifecycle } from "./lifecycle";
+import { validateToolResult } from "./results";
 import { TOOL_IDS } from "./types";
 import type { DocumentWithModelContext, PageConfig, ToolHandlers, ToolId } from "./types";
 
@@ -18,6 +19,7 @@ type PublicTool = Readonly<{
   description: string;
   readOnlyHint: boolean;
   untrustedContentHint: boolean;
+  maxOutputCharacters: number;
 }>;
 
 const manifest = manifestJson as Readonly<{ contractVersion: string; tools: readonly PublicTool[] }>;
@@ -57,7 +59,11 @@ export async function registerPageTools(input: Readonly<{
           readOnlyHint: tool.readOnlyHint,
           untrustedContentHint: tool.untrustedContentHint,
         },
-        execute: input.handlers[tool.id],
+        execute: async (value, context) => validateToolResult(
+          tool.id,
+          await input.handlers[tool.id](value, context),
+          tool.maxOutputCharacters,
+        ),
       }, { signal: registration.signal });
       registered.push(tool.id);
     }

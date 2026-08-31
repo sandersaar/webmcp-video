@@ -4,6 +4,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function exactKeys(value: Record<string, unknown>, expected: readonly string[], code: string): void {
+  if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expected].sort())) throw new Error(code);
+}
+
 function text(value: unknown, code: string): string {
   if (typeof value !== "string" || value.length === 0 || value.length > 500) throw new Error(code);
   return value;
@@ -16,6 +20,7 @@ function rightsState(value: unknown): RightsState {
 
 function moment(value: unknown): FixtureMoment {
   if (!isRecord(value)) throw new Error("invalid_fixture_moment");
+  exactKeys(value, ["end_seconds", "evidence", "fixture_key", "rights_state", "start_seconds", "visual_description"], "invalid_fixture_moment");
   const start = value.start_seconds;
   const end = value.end_seconds;
   if (typeof start !== "number" || typeof end !== "number" || !Number.isFinite(start) || !Number.isFinite(end) ||
@@ -34,6 +39,7 @@ function video(value: unknown): FixtureVideo {
   if (!isRecord(value) || !Array.isArray(value.moments) || value.moments.length === 0) {
     throw new Error("invalid_fixture_video");
   }
+  exactKeys(value, ["fixture_key", "moments", "rights_state", "title", "youtube_video_id"], "invalid_fixture_video");
   const youtubeVideoId = text(value.youtube_video_id, "invalid_fixture_video_id");
   if (!/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) throw new Error("invalid_fixture_video_id");
   return {
@@ -51,6 +57,7 @@ export function parseFixture(value: unknown): FixtureCatalog {
       typeof value.page_mapping !== "string" || !Array.isArray(value.videos) || value.videos.length === 0) {
     throw new Error("invalid_fixture");
   }
+  exactKeys(value, ["contract_version", "fixture_handler", "page_mapping", "videos"], "invalid_fixture");
   const videos = value.videos.map(video);
   const keys = videos.flatMap((entry) => [entry.fixture_key, ...entry.moments.map((candidate) => candidate.fixture_key)]);
   if (new Set(keys).size !== keys.length) throw new Error("duplicate_fixture_key");
