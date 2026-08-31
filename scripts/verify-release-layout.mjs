@@ -61,6 +61,7 @@ const expected = [
   "tests/rights-revocation.test.ts",
   "tests/tool-flow.test.ts",
   "tsconfig.json",
+  "vercel.json",
   "vite.config.ts",
 ].sort();
 

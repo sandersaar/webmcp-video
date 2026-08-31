@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadPageConfig, parsePageConfig } from "#video/adapter/page-config";
+import { FIXED_PAGE_CONFIG_PATH, loadPageConfig, parsePageConfig } from "#video/adapter/page-config";
 
 const config = {
   contract_version: "1.0",
@@ -24,6 +24,7 @@ describe("page scope", () => {
   });
 
   it("loads configuration only from the page origin", async () => {
+    expect(FIXED_PAGE_CONFIG_PATH).toBe("/page-tools.json");
     const location = { href: "https://demo.example/page", origin: "https://demo.example" } as Location;
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify(config), { status: 200 }));
     await expect(loadPageConfig("/page-tools.json", location, fetchImpl as typeof fetch)).resolves.toMatchObject(config);

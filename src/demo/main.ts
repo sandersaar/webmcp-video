@@ -1,6 +1,6 @@
 import { createFixtureHandlers } from "#video/adapter/handlers";
 import { installNavigationCleanup, PageToolLifecycle } from "#video/adapter/lifecycle";
-import { loadPageConfig } from "#video/adapter/page-config";
+import { FIXED_PAGE_CONFIG_PATH, loadPageConfig } from "#video/adapter/page-config";
 import { mountOfficialPlayer } from "#video/adapter/player";
 import { ReferenceVault } from "#video/adapter/reference-vault";
 import { registerPageTools } from "#video/adapter/register-tools";
@@ -21,11 +21,8 @@ declare global {
 }
 
 export async function bootDemo(targetWindow: Window = window, targetDocument: Document = document) {
-  const moduleScript = targetDocument.querySelector<HTMLScriptElement>("script[data-webmcp-config]");
-  const configPath = moduleScript?.dataset.webmcpConfig;
-  if (!configPath) throw new Error("page_config_path_missing");
   const [config, fixture] = await Promise.all([
-    loadPageConfig(configPath, targetWindow.location),
+    loadPageConfig(FIXED_PAGE_CONFIG_PATH, targetWindow.location),
     loadFixture("/fixtures/rights-safe-catalog.v1.json", targetWindow.location),
   ]);
   const playerElement = targetDocument.getElementById("official-player");

@@ -3,6 +3,7 @@ import type { PageConfig } from "./types";
 
 const allowedKeys = ["contract_version", "enabled_tools", "fixture_path", "kill_switch", "page_mapping"].sort();
 export const FIXED_FIXTURE_PATH = "/fixtures/rights-safe-catalog.v1.json" as const;
+export const FIXED_PAGE_CONFIG_PATH = "/page-tools.json" as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
