@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "moments": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/moment" }
+    }
+  },
+  "required": ["moments"],
+  "additionalProperties": false,
+  "$defs": {
+    "moment": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "start_seconds": { "type": "number", "minimum": 0 },
+        "end_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "evidence": { "type": "string" },
+        "moment_ref": { "type": "string", "pattern": "^wmv_[A-Za-z0-9_-]{22}$" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "open_url": { "type": "string", "format": "uri" }
+      },
+      "required": ["title", "start_seconds", "end_seconds", "evidence", "moment_ref", "expires_at", "open_url"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "moment_ref": { "type": "string", "pattern": "^wmv_[A-Za-z0-9_-]{22}$" }
+  },
+  "required": ["moment_ref"],
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["sought", "cued", "needs_user", "fallback"] },
+    "requested_seconds": { "type": "number", "minimum": 0 },
+    "observed_seconds": { "type": ["number", "null"], "minimum": 0 },
+    "player_state": { "type": "string", "enum": ["unstarted", "ended", "playing", "paused", "buffering", "cued", "unavailable", "unknown"] },
+    "moment_ref": { "type": "string", "pattern": "^wmv_[A-Za-z0-9_-]{22}$" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "open_url": { "type": "string", "format": "uri" }
+  },
+  "required": ["status", "requested_seconds", "observed_seconds", "player_state", "moment_ref", "expires_at", "open_url"],
+  "additionalProperties": false
+}
