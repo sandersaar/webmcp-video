@@ -23,7 +23,8 @@
     "verify:tools": "node scripts/verify-tool-surface.mjs",
     "verify:public": "node scripts/verify-public-boundary.mjs",
     "verify:bundle": "node scripts/verify-bundle.mjs",
-    "verify:commit": "pnpm verify:versions && pnpm typecheck && pnpm test:unit && pnpm build && pnpm test:browser && pnpm verify:contracts && pnpm verify:tools && pnpm verify:public && pnpm verify:bundle",
+    "verify:layout": "node scripts/verify-release-layout.mjs",
+    "verify:commit": "pnpm verify:versions && pnpm typecheck && pnpm test:unit && pnpm build && pnpm test:browser && pnpm verify:contracts && pnpm verify:tools && pnpm verify:public && pnpm verify:bundle && pnpm verify:layout",
     "verify:all": "pnpm verify:commit",
     "verify:clean-clone": "node scripts/verify-clean-clone.mjs"
   },
