@@ -49,7 +49,7 @@ Use the default `motorized exoskeleton` search. Open its context, then play the 
 
 Playwright runs Chromium against the built page.
 
-The tests cover the three-tool chain, player movement, one three-second limit, stable player checks, late events, revoked rights, overlapping requests, missing WebMCP support, and old requests that finish late.
+The tests cover the three-tool chain, visible controls, expired-result refresh, player movement, one three-second limit, stable player checks, late events, revoked rights, overlapping requests, missing WebMCP support, and old requests that finish late.
 
 The tests use a controlled YouTube player. They do not contact or test the live YouTube service.
 

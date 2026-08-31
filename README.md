@@ -27,11 +27,26 @@ Open `http://127.0.0.1:5173/examples/plain-html/`.
 
 The page still has local controls when WebMCP is unavailable.
 
+## Adapt it to your video page
+
+This repository is a reference implementation, not a published package.
+
+1. Replace `public/fixtures/rights-safe-catalog.v1.json` with your own safe catalog shape.
+2. Replace `FixtureRightsStore` with a current permission check for your catalog.
+3. Implement `OfficialPlayer` for your supported player without changing the three public tool names.
+4. Keep the page mapping, catalog, and player destination fixed by trusted page configuration.
+5. Keep short-lived references and check permission again before context or playback.
+6. Run `pnpm verify:commit` before publishing.
+
+The useful boundary is the three-tool flow and its safety checks. The included fixture and YouTube adapter are examples you can replace.
+
 ## How the tools work
 
 Search returns a random, short-lived reference with an exact start and end time.
 
 The reference expires after five minutes. It only works on the page and with the current rights setting that created it.
+
+The visible demo controls request a fresh reference when a displayed result expires. The new reference still passes the same rights checks.
 
 Context and playback check the rights setting again before they act.
 
@@ -71,7 +86,7 @@ This record is not stored. It is not a production audit record.
 
 Search and context results stay within 1,500 characters. Playback results stay within 1,200 characters.
 
-`pnpm verify:commit` checks pinned versions, types, unit tests, the build, Chromium tests, and release files.
+`pnpm verify:commit` checks pinned versions, types, unit tests, the build, Chromium tests, expired-result refresh, and release files.
 
 See [JUDGING.md](JUDGING.md) for the exact review steps and clean-clone commands.
 

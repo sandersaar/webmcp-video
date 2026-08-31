@@ -10,6 +10,8 @@ type SearchMoment = Readonly<{
   open_url: string;
 }>;
 
+const REFERENCE_REFRESH_WINDOW_MILLISECONDS = 5_000;
+
 function button(label: string, action: () => void, secondary = false): HTMLButtonElement {
   const element = document.createElement("button");
   element.type = "button";
@@ -19,7 +21,11 @@ function button(label: string, action: () => void, secondary = false): HTMLButto
   return element;
 }
 
-export function mountFlowPanel(container: HTMLElement, handlers: ToolHandlers): void {
+export function mountFlowPanel(
+  container: HTMLElement,
+  handlers: ToolHandlers,
+  now: () => number = Date.now,
+): void {
   const heading = document.createElement("h2");
   heading.textContent = "Try the three-tool flow";
   const form = document.createElement("form");
@@ -36,7 +42,30 @@ export function mountFlowPanel(container: HTMLElement, handlers: ToolHandlers): 
   output.textContent = "Search results will appear here.";
   let renderGeneration = 0;
 
-  const renderMoment = (moment: SearchMoment) => {
+  const search = async (searchQuery: string): Promise<SearchMoment[]> => {
+    const result = await handlers.search_this_catalog({ query: searchQuery, limit: 3 }, {
+      signal: new AbortController().signal,
+    });
+    return (result as { moments: SearchMoment[] }).moments;
+  };
+
+  const displayError = (error: unknown, fallback: string): void => {
+    const message = error instanceof Error ? error.message : fallback;
+    output.textContent = ["moment_unavailable", "rights_denied"].includes(message)
+      ? "This moment is no longer available. Search again."
+      : message;
+  };
+
+  const renderMoment = (moment: SearchMoment, searchQuery: string) => {
+    const refreshMoment = async (): Promise<SearchMoment> => {
+      const expiry = Date.parse(moment.expires_at);
+      if (Number.isFinite(expiry) && expiry - now() > REFERENCE_REFRESH_WINDOW_MILLISECONDS) return moment;
+      const moments = await search(searchQuery);
+      const fresh = moments.find((candidate) => candidate.open_url === moment.open_url);
+      if (!fresh) throw new Error("moment_unavailable");
+      renderMoment(fresh, searchQuery);
+      return fresh;
+    };
     const title = document.createElement("h3");
     title.textContent = moment.title;
     const evidence = document.createElement("p");
@@ -44,22 +73,26 @@ export function mountFlowPanel(container: HTMLElement, handlers: ToolHandlers): 
     const actions = document.createElement("div");
     actions.className = "actions";
     const contextButton = button("Show context", () => {
-      void handlers.get_moment_context({ moment_ref: moment.moment_ref }, {
+      void refreshMoment().then((activeMoment) => handlers.get_moment_context({
+        moment_ref: activeMoment.moment_ref,
+      }, {
         signal: new AbortController().signal,
-      }).then((result) => {
+      })).then((result) => {
         const context = result as { visual_description: string };
         const text = document.createElement("p");
         text.textContent = context.visual_description;
         output.append(text);
       }).catch((error: unknown) => {
-        output.textContent = error instanceof Error ? error.message : "context_failed";
+        displayError(error, "context_failed");
       });
     }, true);
     const playButton = button("Play moment", () => {
       const generation = ++renderGeneration;
-      void handlers.play_moment({ moment_ref: moment.moment_ref }, {
+      void refreshMoment().then((activeMoment) => handlers.play_moment({
+        moment_ref: activeMoment.moment_ref,
+      }, {
         signal: new AbortController().signal,
-      }).then((result) => {
+      })).then((result) => {
         if (generation !== renderGeneration) return;
         const play = result as { status: string };
         const status = document.createElement("p");
@@ -68,10 +101,7 @@ export function mountFlowPanel(container: HTMLElement, handlers: ToolHandlers): 
         output.append(status);
       }).catch((error: unknown) => {
         if (generation !== renderGeneration) return;
-        const status = document.createElement("p");
-        status.dataset.playStatus = "error";
-        status.textContent = error instanceof Error ? error.message : "play_failed";
-        output.append(status);
+        displayError(error, "play_failed");
       });
     });
     const link = document.createElement("a");
@@ -86,14 +116,12 @@ export function mountFlowPanel(container: HTMLElement, handlers: ToolHandlers): 
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    void handlers.search_this_catalog({ query: query.value, limit: 3 }, {
-      signal: new AbortController().signal,
-    }).then((result) => {
-      const moments = (result as { moments: SearchMoment[] }).moments;
-      if (moments[0]) renderMoment(moments[0]);
+    const searchQuery = query.value;
+    void search(searchQuery).then((moments) => {
+      if (moments[0]) renderMoment(moments[0], searchQuery);
       else output.textContent = "No rights-cleared moment matched.";
     }).catch((error: unknown) => {
-      output.textContent = error instanceof Error ? error.message : "search_failed";
+      displayError(error, "search_failed");
     });
   });
 
