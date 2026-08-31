@@ -5,7 +5,8 @@ export type RuntimeOptions = Readonly<{
   state?: number;
   videoId?: string;
   seconds?: number;
-  autoplayBlocked?: boolean;
+  lateAutoplayBlocked?: boolean;
+  lateError?: boolean;
   freezeObservation?: boolean;
 }>;
 
@@ -29,6 +30,7 @@ export async function installRuntime(page: Page, options: RuntimeOptions = {}): 
             videoId: string;
             events: {
               onReady(event: { target: unknown }): void;
+              onError(): void;
               onAutoplayBlocked(): void;
             };
           }) {
@@ -47,7 +49,8 @@ export async function installRuntime(page: Page, options: RuntimeOptions = {}): 
             };
             queueMicrotask(() => {
               playerOptions.events.onReady({ target: driver });
-              if (initial.autoplayBlocked) playerOptions.events.onAutoplayBlocked();
+              if (initial.lateError) setTimeout(() => playerOptions.events.onError(), 10);
+              if (initial.lateAutoplayBlocked) setTimeout(() => playerOptions.events.onAutoplayBlocked(), 15);
             });
             return driver;
           }

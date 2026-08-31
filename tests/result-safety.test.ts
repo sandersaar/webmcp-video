@@ -104,7 +104,7 @@ describe("result safety", () => {
   it("rejects reversed times, mismatched links, and untruthful states", () => {
     expect(() => validateToolResult("search_this_catalog", {
       moments: [{ ...validMoment, start_seconds: 52, end_seconds: 46 }],
-    }, 6000)).toThrow("invalid_tool_result");
+    }, 1500)).toThrow("invalid_tool_result");
     expect(() => validateToolResult("play_moment", {
       ...validPlay,
       open_url: "https://www.youtube.com/watch?v=t82C_EYja18&t=47s",
@@ -113,5 +113,19 @@ describe("result safety", () => {
       ...validPlay,
       player_state: "cued",
     }, 1200)).toThrow("invalid_tool_result");
+  });
+
+  it("rejects results that exceed the published output budgets", () => {
+    expect(() => validateToolResult("search_this_catalog", {
+      moments: [{ ...validMoment, evidence: "a".repeat(1300) }, { ...validMoment, moment_ref: "wmv_BBBBBBBBBBBBBBBBBBBBBB" }],
+    }, 1500)).toThrow("tool_result_too_large");
+    expect(() => validateToolResult("get_moment_context", {
+      ...validMoment,
+      visual_description: "a".repeat(1300),
+    }, 1500)).toThrow("tool_result_too_large");
+    expect(() => validateToolResult("play_moment", {
+      ...validPlay,
+      title: "a".repeat(1200),
+    }, 1200)).toThrow("tool_result_too_large");
   });
 });

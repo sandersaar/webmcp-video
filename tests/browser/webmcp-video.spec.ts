@@ -100,14 +100,27 @@ test("keeps normal controls when the WebMCP runtime is missing", async ({ page }
   await expect(page.getByRole("button", { name: "Find exact moment" })).toBeVisible();
 });
 
-test("reports autoplay restriction as needs_user", async ({ page }) => {
-  await installRuntime(page, { state: 2, seconds: 0, autoplayBlocked: true });
+test("does not derive needs_user from a provider autoplay notification", async ({ page }) => {
+  await installRuntime(page, { state: 2, seconds: 0, lateAutoplayBlocked: true });
   await page.goto(demoUrl);
   const momentRef = await searchReference(page);
   await expect(invoke(page, "play_moment", { moment_ref: momentRef })).resolves.toMatchObject({
-    status: "needs_user",
+    status: "sought",
     observed_seconds: 46,
   });
+});
+
+test("ignores late provider errors and autoplay notifications", async ({ page }) => {
+  await installRuntime(page, { freezeObservation: true, lateError: true, lateAutoplayBlocked: true });
+  await page.goto(demoUrl);
+  const momentRef = await searchReference(page);
+  const result = await page.evaluate(async (reference) => {
+    const pending = window.__webmcpVideoLocalDemo?.invoke("play_moment", { moment_ref: reference });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    window.__webmcpTestRuntime.driver.freezeObservation = false;
+    return await pending;
+  }, momentRef);
+  expect(result).toMatchObject({ status: "sought", observed_seconds: 46 });
 });
 
 test("suppresses stale success and stale audit evidence", async ({ page }) => {
@@ -129,6 +142,14 @@ test("suppresses stale success and stale audit evidence", async ({ page }) => {
   }, { first: firstRef, second: secondRef });
   expect(result.secondPlay).toMatchObject({ status: "sought", moment_ref: secondRef });
   const playAudits = result.audit.filter((entry) => entry.tool_id === "play_moment");
-  expect(playAudits).toHaveLength(1);
-  expect(playAudits[0]).toMatchObject({ moment_ref: secondRef, rights_decision: "allowed" });
+  expect(playAudits).toHaveLength(2);
+  expect(playAudits[0]).toMatchObject({
+    moment_ref: firstRef,
+    rights_decision: "allowed",
+    requested_second: 46,
+    observed_second: null,
+    player_status: null,
+    safe_error_code: "play_superseded",
+  });
+  expect(playAudits[1]).toMatchObject({ moment_ref: secondRef, rights_decision: "allowed" });
 });

@@ -6,12 +6,21 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(join(root, "src/contracts/manifest.json"), "utf8"));
 const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const expected = ["search_this_catalog", "get_moment_context", "play_moment"];
+const outputBudgets = new Map([
+  ["search_this_catalog", 1500],
+  ["get_moment_context", 1500],
+  ["play_moment", 1200],
+]);
 if (manifest.contractVersion !== "1.0") throw new Error("Contract version must be 1.0.");
 if (Object.keys(packageJson.dependencies ?? {}).length > 0) throw new Error("Runtime dependencies are not allowed.");
 if (JSON.stringify(manifest.tools.map((tool) => tool.id)) !== JSON.stringify(expected)) {
   throw new Error("Manifest must contain exactly three tools in the approved order.");
 }
 for (const tool of manifest.tools) {
+  const expectedBudget = outputBudgets.get(tool.id);
+  if (expectedBudget === undefined || tool.maxOutputCharacters !== expectedBudget || tool.maxOutputCharacters > 1500) {
+    throw new Error(`Invalid output budget for ${tool.id}.`);
+  }
   for (const field of ["inputSchema", "resultSchema"]) {
     const path = join(root, "src/contracts", tool[field]);
     const schema = JSON.parse(await readFile(path, "utf8"));
@@ -19,5 +28,14 @@ for (const tool of manifest.tools) {
       throw new Error(`Schema is not closed: ${tool[field]}`);
     }
   }
+}
+const handlers = await readFile(join(root, "src/adapter/handlers.ts"), "utf8");
+const handlerBudgets = [
+  ["search_this_catalog", "return safeResult({ moments }, 1500);"],
+  ["get_moment_context", "}, 1500);"],
+  ["play_moment", "}, 1200);"],
+];
+for (const [toolId, expectedCall] of handlerBudgets) {
+  if (!handlers.includes(expectedCall)) throw new Error(`Handler output budget is missing for ${toolId}.`);
 }
 process.stdout.write("Contract verification passed.\n");

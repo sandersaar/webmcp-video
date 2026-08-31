@@ -4,9 +4,9 @@ WebMCP Video is a standalone, page-scoped example for finding and playing exact 
 
 It registers three top-level tools through `document.modelContext`:
 
-1. `search_this_catalog` finds rights-cleared moments on the current page.
-2. `get_moment_context` returns exact timing and evidence for one search result.
-3. `play_moment` moves or cues the official YouTube player.
+1. `search_this_catalog` finds matching video moments and returns a `moment_ref` for each result.
+2. `get_moment_context` explains one result. It does not move the player.
+3. `play_moment` moves or prepares the official player at that exact moment.
 
 The repository makes no model calls. It has no backend and needs no secrets.
 
@@ -43,10 +43,13 @@ Tool results expose no internal identifiers or media delivery locators. They inc
 
 - `sought`: the loaded player reached the requested time.
 - `cued`: the requested video and time are ready.
-- `needs_user`: browser policy requires user action.
 - `fallback`: playback was not proven.
 
-New playback supersedes older playback. A superseded operation cannot publish stale success or stale audit evidence.
+Results come from stable, direct video ID, time, and state observations. Provider events are notifications only.
+
+New playback supersedes older playback. Only the latest operation can command the player or publish a success. A superseded authorized operation records one cancellation audit entry.
+
+Each playback invocation has one three-second deadline. It covers readiness, commands, observations, corrections, and settlement. Success requires two matching direct observations that stay stable for 100 milliseconds. The player sends one initial navigation command and at most two corrections. It does not start or pause user playback.
 
 ## Rights and assets
 
@@ -63,6 +66,8 @@ The page shows a `Local demo audit` record for the current browser session.
 This record is not persistent. It is not production service audit evidence.
 
 ## Verification
+
+Search and context results each stay within 1500 characters. Playback results stay within 1200 characters.
 
 `pnpm verify:commit` runs pinned-version checks, TypeScript, unit tests, build, Chromium tests, and release scans.
 

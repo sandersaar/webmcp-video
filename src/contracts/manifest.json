@@ -4,27 +4,27 @@
     {
       "id": "search_this_catalog",
       "title": "Search this video catalog",
-      "description": "Find relevant rights-cleared video moments on this page.",
+      "description": "Search this page's video catalog. Returns matching moments and a moment_ref for each result.",
       "inputSchema": "schemas/search_this_catalog.input.schema.json",
       "resultSchema": "schemas/search_this_catalog.result.schema.json",
       "readOnlyHint": true,
       "untrustedContentHint": true,
-      "maxOutputCharacters": 6000
+      "maxOutputCharacters": 1500
     },
     {
       "id": "get_moment_context",
       "title": "Get moment context",
-      "description": "Get the exact evidence and timing for one search result from this page.",
+      "description": "Explain one search result using its moment_ref. Does not move the player.",
       "inputSchema": "schemas/get_moment_context.input.schema.json",
       "resultSchema": "schemas/get_moment_context.result.schema.json",
       "readOnlyHint": true,
       "untrustedContentHint": true,
-      "maxOutputCharacters": 4000
+      "maxOutputCharacters": 1500
     },
     {
       "id": "play_moment",
       "title": "Play moment",
-      "description": "Move or cue the official page player to one rights-cleared moment.",
+      "description": "Move or prepare the page's video player at an exact moment. Use a moment_ref from search_this_catalog.",
       "inputSchema": "schemas/play_moment.input.schema.json",
       "resultSchema": "schemas/play_moment.result.schema.json",
       "readOnlyHint": false,

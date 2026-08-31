@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PageToolLifecycle } from "#video/adapter/lifecycle";
 import { registerPageTools } from "#video/adapter/register-tools";
+import manifest from "#video/contracts/manifest.json";
 import type { DocumentWithModelContext, ModelContextTool, PageConfig, ToolHandlers } from "#video/adapter/types";
 
 const config: PageConfig = {
@@ -19,6 +20,17 @@ const handlers: ToolHandlers = {
 };
 
 describe("tool registration", () => {
+  it("keeps the approved sequence, plain descriptions, and output budgets", () => {
+    expect(manifest.tools.map((tool) => tool.id)).toEqual(config.enabled_tools);
+    expect(manifest.tools.map((tool) => tool.description)).toEqual([
+      "Search this page's video catalog. Returns matching moments and a moment_ref for each result.",
+      "Explain one search result using its moment_ref. Does not move the player.",
+      "Move or prepare the page's video player at an exact moment. Use a moment_ref from search_this_catalog.",
+    ]);
+    expect(manifest.tools.map((tool) => tool.maxOutputCharacters)).toEqual([1500, 1500, 1200]);
+    expect(manifest.tools.every((tool) => tool.maxOutputCharacters <= 1500)).toBe(true);
+  });
+
   it("awaits exactly three registrations and omits unsupported fields", async () => {
     const definitions: ModelContextTool[] = [];
     const resolvers: Array<() => void> = [];

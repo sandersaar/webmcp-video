@@ -1,5 +1,5 @@
 import { assertTruthfulPlayerResult, momentResult, safeResult } from "./results";
-import { isSupersededPlayError } from "./player";
+import { isSupersededPlayError, SupersededPlayError } from "./player";
 import type { AuditEntry, FixtureCatalog, OfficialPlayer, PageConfig, PlayerResult, ToolHandlers, ToolId } from "./types";
 import { FixtureRightsStore, RightsDeniedError } from "#video/fixture/rights-store";
 
@@ -56,6 +56,8 @@ export function createFixtureHandlers(input: Readonly<{
 }>): ToolHandlers {
   if (input.config.page_mapping !== input.fixture.page_mapping) throw new Error("page_mapping_mismatch");
   const beforePlayerAction = input.beforePlayerAction ?? (async () => undefined);
+  let activePlay: AbortController | undefined;
+  let playGeneration = 0;
 
   return {
     async search_this_catalog(rawInput) {
@@ -78,7 +80,7 @@ export function createFixtureHandlers(input: Readonly<{
           return momentResult({ video: entry.video, moment: entry.moment, ...issued });
         });
       input.audit({ ...auditBase("search_this_catalog", input.config.page_mapping), rights_decision: "filtered" });
-      return safeResult({ moments }, 6000);
+      return safeResult({ moments }, 1500);
     },
 
     async get_moment_context(rawInput) {
@@ -95,7 +97,7 @@ export function createFixtureHandlers(input: Readonly<{
             expiresAt: authorized.authorization.expires_at,
           }),
           visual_description: authorized.moment.visual_description,
-        }, 4000);
+        }, 1500);
       } catch (error) {
         input.audit({ ...entry, moment_ref: momentRef, rights_decision: "denied", safe_error_code: "rights_denied" });
         throw error;
@@ -106,22 +108,47 @@ export function createFixtureHandlers(input: Readonly<{
       const momentRef = parseText(rawInput, "moment_ref", 26, 26, ["moment_ref"]);
       const entry = auditBase("play_moment", input.config.page_mapping);
       let dispose: () => void = () => undefined;
+      let operation: AbortController | undefined;
+      let generation = 0;
+      let audited = false;
+      let authorized: ReturnType<FixtureRightsStore["authorize"]> | undefined;
+      const assertLatest = () => {
+        if (!operation || generation !== playGeneration || operation.signal.aborted) {
+          throw new SupersededPlayError("play_superseded");
+        }
+      };
+      const record = (auditEntry: AuditEntry) => {
+        if (!audited) {
+          audited = true;
+          input.audit(auditEntry);
+        }
+      };
       try {
-        const authorized = input.rightsStore.authorize(momentRef);
-        const linked = linkedSignal([authorized.revocationSignal, context.signal]);
+        authorized = input.rightsStore.authorize(momentRef);
+        operation = new AbortController();
+        activePlay?.abort("superseded");
+        activePlay = operation;
+        generation = ++playGeneration;
+        const linked = linkedSignal([authorized.revocationSignal, context.signal, operation.signal]);
         dispose = linked.dispose;
+        assertLatest();
         await beforePlayerAction();
+        assertLatest();
         input.rightsStore.assertAuthorizationActive(momentRef, authorized.rightsGeneration);
+        assertLatest();
         let observed: PlayerResult;
         try {
           observed = await input.player.playMoment(authorized.authorization, linked.signal);
         } catch (error) {
+          assertLatest();
           input.rightsStore.assertAuthorizationActive(momentRef, authorized.rightsGeneration);
           throw error;
         }
+        assertLatest();
         input.rightsStore.assertAuthorizationActive(momentRef, authorized.rightsGeneration);
         assertTruthfulPlayerResult(observed, authorized.authorization.requested_seconds);
-        input.audit({
+        assertLatest();
+        record({
           ...entry,
           moment_ref: momentRef,
           rights_decision: "allowed",
@@ -139,9 +166,29 @@ export function createFixtureHandlers(input: Readonly<{
           open_url: authorized.authorization.open_url,
         }, 1200);
       } catch (error) {
-        if (isSupersededPlayError(error)) throw error;
+        if (authorized) {
+          try {
+            input.rightsStore.assertAuthorizationActive(momentRef, authorized.rightsGeneration);
+          } catch (rightsError) {
+            record({ ...entry, moment_ref: momentRef, rights_decision: "denied", safe_error_code: "rights_denied" });
+            throw rightsError;
+          }
+        }
+        if (isSupersededPlayError(error) || (operation !== undefined &&
+            (generation !== playGeneration || operation.signal.aborted))) {
+          if (authorized) {
+            record({
+              ...entry,
+              moment_ref: momentRef,
+              rights_decision: "allowed",
+              requested_second: authorized.authorization.requested_seconds,
+              safe_error_code: "play_superseded",
+            });
+          }
+          throw isSupersededPlayError(error) ? error : new SupersededPlayError("play_superseded");
+        }
         const denied = error instanceof RightsDeniedError;
-        input.audit({
+        record({
           ...entry,
           moment_ref: momentRef,
           rights_decision: denied ? "denied" : "not_applicable",
@@ -150,6 +197,7 @@ export function createFixtureHandlers(input: Readonly<{
         throw error;
       } finally {
         dispose();
+        if (operation && activePlay === operation) activePlay = undefined;
       }
     },
   };

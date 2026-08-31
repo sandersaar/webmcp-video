@@ -41,7 +41,7 @@ Supported-host discovery is separate from local automated proof.
 
 Playwright runs real Chromium against the page.
 
-The suite covers chaining, cueing, two revocation points, overlapping plays, missing runtime, autoplay restrictions, and stale suppression.
+The suite covers chaining, cueing, one absolute playback deadline, a 100-millisecond settlement guard, bounded correction, late provider notifications, revocation, overlapping plays, missing runtime, and stale suppression.
 
 The suite injects a deterministic YouTube API driver. It does not contact or validate the live provider.
 

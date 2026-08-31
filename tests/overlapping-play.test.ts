@@ -11,14 +11,24 @@ const baseAuthorization = {
 };
 
 describe("overlapping playback", () => {
-  it("supersedes the older operation", async () => {
+  it.each([
+    ["same target", baseAuthorization.youtube_video_id, 46],
+    ["same video at a different time", baseAuthorization.youtube_video_id, 52],
+    ["different video", "j_w8EvCJ6mU", 120],
+  ])("supersedes the older operation for %s", async (_case, videoId, requestedSeconds) => {
     let seconds = 0;
+    let currentVideoId = baseAuthorization.youtube_video_id;
+    let state = 1;
     const driver = {
       getCurrentTime: () => seconds,
-      getPlayerState: () => 1,
-      getVideoData: () => ({ video_id: "t82C_EYja18" }),
+      getPlayerState: () => state,
+      getVideoData: () => ({ video_id: currentVideoId }),
       seekTo: (next: number) => { seconds = next; },
-      cueVideoById: () => undefined,
+      cueVideoById: ({ videoId: nextVideoId, startSeconds }: { videoId: string; startSeconds: number }) => {
+        currentVideoId = nextVideoId;
+        seconds = startSeconds;
+        state = 5;
+      },
     };
     let releaseDelay: () => void = () => undefined;
     const firstDelay = new Promise<void>((resolve) => { releaseDelay = resolve; });
@@ -26,13 +36,34 @@ describe("overlapping playback", () => {
     const player = new YouTubeOfficialPlayer(Promise.resolve(driver), async () => {
       delayCount += 1;
       if (delayCount === 1) await firstDelay;
-    });
+    }, 3_000, 0);
 
     const first = player.playMoment({ ...baseAuthorization, requested_seconds: 12 }, new AbortController().signal);
     await Promise.resolve();
-    const second = player.playMoment(baseAuthorization, new AbortController().signal);
+    const second = player.playMoment({ ...baseAuthorization, youtube_video_id: videoId, requested_seconds: requestedSeconds }, new AbortController().signal);
     releaseDelay();
     await expect(first).rejects.toBeInstanceOf(SupersededPlayError);
-    await expect(second).resolves.toMatchObject({ status: "sought", observed_seconds: 46 });
+    await expect(second).resolves.toMatchObject({
+      status: videoId === baseAuthorization.youtube_video_id ? "sought" : "cued",
+      observed_seconds: videoId === baseAuthorization.youtube_video_id ? requestedSeconds : null,
+    });
+  });
+
+  it("cleans up a cancelled operation before a third call", async () => {
+    let seconds = 0;
+    const driver = {
+      getCurrentTime: () => seconds,
+      getPlayerState: () => 1,
+      getVideoData: () => ({ video_id: baseAuthorization.youtube_video_id }),
+      seekTo: (next: number) => { seconds = next; },
+      cueVideoById: () => undefined,
+    };
+    const player = new YouTubeOfficialPlayer(Promise.resolve(driver), async () => undefined, 3_000, 0);
+    const first = player.playMoment({ ...baseAuthorization, requested_seconds: 12 }, new AbortController().signal);
+    const second = player.playMoment({ ...baseAuthorization, requested_seconds: 24 }, new AbortController().signal);
+    await expect(first).rejects.toBeInstanceOf(SupersededPlayError);
+    await expect(second).resolves.toMatchObject({ status: "sought", observed_seconds: 24 });
+    await expect(player.playMoment(baseAuthorization, new AbortController().signal))
+      .resolves.toMatchObject({ status: "sought", observed_seconds: 46 });
   });
 });
