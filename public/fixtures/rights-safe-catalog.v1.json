@@ -1,0 +1,55 @@
+{
+  "contract_version": "1.0",
+  "fixture_handler": "rights-safe-catalog-v1",
+  "page_mapping": "page_public_demo_v1",
+  "videos": [
+    {
+      "fixture_key": "primary_video",
+      "title": "Top 10 Tech Experiences in China",
+      "youtube_video_id": "t82C_EYja18",
+      "rights_state": "active",
+      "moments": [
+        {
+          "fixture_key": "outdoor_device",
+          "start_seconds": 46,
+          "end_seconds": 52,
+          "evidence": "The presenter wears a motorized exoskeleton while running outside. A robotic massage scene follows.",
+          "visual_description": "A motorized exoskeleton supports the presenter during an outdoor run.",
+          "rights_state": "active"
+        },
+        {
+          "fixture_key": "following_scene",
+          "start_seconds": 52,
+          "end_seconds": 59,
+          "evidence": "A robotic massage scene follows the outdoor exoskeleton demonstration.",
+          "visual_description": "The presenter moves from the outdoor run to a robotic massage demonstration.",
+          "rights_state": "active"
+        },
+        {
+          "fixture_key": "revoked_example",
+          "start_seconds": 90,
+          "end_seconds": 96,
+          "evidence": "This record exists only to prove fail-closed rights behavior.",
+          "visual_description": "This revoked record must never appear in tool results.",
+          "rights_state": "revoked"
+        }
+      ]
+    },
+    {
+      "fixture_key": "second_video",
+      "title": "Cars in China: How They Evolved So Fast",
+      "youtube_video_id": "j_w8EvCJ6mU",
+      "rights_state": "active",
+      "moments": [
+        {
+          "fixture_key": "vehicle_comparison",
+          "start_seconds": 120,
+          "end_seconds": 128,
+          "evidence": "The presenter compares how vehicle technology evolved in China.",
+          "visual_description": "Several generations of public road vehicles illustrate rapid product change.",
+          "rights_state": "active"
+        }
+      ]
+    }
+  ]
+}
