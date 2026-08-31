@@ -40,8 +40,15 @@ p {
   aspect-ratio: 16 / 9;
   background: #dfe7d6;
   border-radius: 16px;
+  min-height: 200px;
+  min-width: 200px;
   overflow: hidden;
   width: 100%;
+}
+
+#official-player iframe {
+  min-height: 200px;
+  min-width: 200px;
 }
 
 #flow-panel,

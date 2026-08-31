@@ -10,6 +10,9 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173",
     browserName: "chromium",
     headless: true,
+    launchOptions: {
+      args: ["--host-resolver-rules=MAP preview.example.test 127.0.0.1"],
+    },
     trace: "retain-on-failure",
   },
   webServer: {

@@ -12,6 +12,49 @@ declare global {
 
 const demoUrl = "/examples/plain-html/";
 
+for (const scenario of [
+  {
+    name: "normal preview-like pane",
+    url: "http://preview.example.test:4173/examples/plain-html/",
+    origin: "http://preview.example.test:4173",
+    width: 1280,
+    height: 900,
+  },
+  {
+    name: "narrow localhost pane",
+    url: "http://localhost:4173/examples/plain-html/",
+    origin: "http://localhost:4173",
+    width: 320,
+    height: 900,
+  },
+]) {
+  test(`binds the official YouTube iframe in a ${scenario.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: scenario.width, height: scenario.height });
+    await installRuntime(page);
+    await page.goto(scenario.url);
+
+    const iframe = page.locator("iframe#official-player");
+    await expect(iframe).toBeVisible();
+    const source = await iframe.getAttribute("src");
+    expect(source).not.toBeNull();
+    const playerUrl = new URL(source ?? "");
+    expect(playerUrl.origin).toBe("https://www.youtube-nocookie.com");
+    expect(playerUrl.pathname).toBe("/embed/t82C_EYja18");
+    expect(playerUrl.searchParams.get("enablejsapi")).toBe("1");
+    expect(playerUrl.searchParams.get("playsinline")).toBe("1");
+    expect(playerUrl.searchParams.get("origin")).toBe(scenario.origin);
+    expect(playerUrl.searchParams.has("autoplay")).toBe(false);
+    await expect(iframe).toHaveAttribute(
+      "allow",
+      "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+    );
+    const box = await iframe.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box?.width).toBeGreaterThanOrEqual(200);
+    expect(box?.height).toBeGreaterThanOrEqual(200);
+  });
+}
+
 async function invoke(page: import("@playwright/test").Page, name: string, input: unknown) {
   return await page.evaluate(async ({ toolName, value }) => {
     const tool = window.__webmcpTestRuntime.tools.get(toolName);
@@ -45,6 +88,21 @@ test("chains search, context, and play", async ({ page }) => {
 
 test("cues a cold or different official video", async ({ page }) => {
   await installRuntime(page, { state: -1, videoId: "t82C_EYja18", seconds: 0 });
+  await page.goto(demoUrl);
+  const momentRef = await searchReference(page, "Cars in China evolved");
+  await expect(invoke(page, "play_moment", { moment_ref: momentRef })).resolves.toMatchObject({
+    status: "cued",
+    requested_seconds: 120,
+  });
+});
+
+test("waits through transient missing provider video data after cue", async ({ page }) => {
+  await installRuntime(page, {
+    state: -1,
+    videoId: "j_w8EvCJ6mU",
+    seconds: 0,
+    missingVideoDataAfterCueReads: 8,
+  });
   await page.goto(demoUrl);
   const momentRef = await searchReference(page, "Cars in China evolved");
   await expect(invoke(page, "play_moment", { moment_ref: momentRef })).resolves.toMatchObject({

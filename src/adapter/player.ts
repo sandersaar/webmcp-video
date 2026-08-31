@@ -3,7 +3,7 @@ import type { OfficialPlayer, PlayAuthorization, PlayerResult, PlayerState } fro
 type YouTubeDriver = Readonly<{
   getCurrentTime(): number;
   getPlayerState(): number;
-  getVideoData(): Readonly<{ video_id?: string }>;
+  getVideoData(): unknown;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
   cueVideoById(input: Readonly<{ videoId: string; startSeconds: number }>): void;
 }>;
@@ -13,10 +13,8 @@ type TimeoutHandle = ReturnType<typeof setTimeout>;
 type YouTubeWindow = Window & {
   YT?: {
     Player: new (
-      element: HTMLElement,
+      element: HTMLIFrameElement,
       options: Readonly<{
-        videoId: string;
-        playerVars: Readonly<{ enablejsapi: 1; origin: string; playsinline: 1 }>;
         events: Readonly<{
           onReady(event: Readonly<{ target: YouTubeDriver }>): void;
           onStateChange(event: Readonly<{ data: number }>): void;
@@ -112,11 +110,34 @@ export class YouTubeOfficialPlayer implements OfficialPlayer {
       if (callerSignal.aborted) throw abortError();
     };
     const observe = (driver: YouTubeDriver) => {
-      const seconds = driver.getCurrentTime();
+      let seconds: number | null = null;
+      let videoId: string | undefined;
+      let state: PlayerState = "unknown";
+      try {
+        const value = driver.getCurrentTime();
+        seconds = Number.isFinite(value) ? value : null;
+      } catch {
+        // A provider can briefly reject getters while a cue is settling.
+      }
+      try {
+        const videoData = driver.getVideoData();
+        if (typeof videoData === "object" && videoData !== null && "video_id" in videoData &&
+          typeof videoData.video_id === "string") {
+          videoId = videoData.video_id;
+        }
+      } catch {
+        // A provider can briefly reject getters while a cue is settling.
+      }
+      try {
+        const stateCode = driver.getPlayerState();
+        state = stateNames[stateCode] ?? "unknown";
+      } catch {
+        // A provider can briefly reject getters while a cue is settling.
+      }
       return {
-        videoId: driver.getVideoData().video_id,
-        seconds: Number.isFinite(seconds) ? seconds : null,
-        state: stateNames[driver.getPlayerState()] ?? "unknown",
+        videoId,
+        seconds,
+        state,
       } as const;
     };
 
@@ -234,7 +255,7 @@ export class YouTubeOfficialPlayer implements OfficialPlayer {
 export function mountOfficialPlayer(
   targetWindow: YouTubeWindow,
   targetDocument: Document,
-  element: HTMLElement,
+  element: HTMLIFrameElement,
   youtubeVideoId: string,
   operationTimeoutMilliseconds = 3_000,
 ): YouTubeOfficialPlayer {
@@ -243,6 +264,11 @@ export function mountOfficialPlayer(
     resolveReady = resolve;
   });
   const controller = new YouTubeOfficialPlayer(ready, undefined, operationTimeoutMilliseconds);
+  const playerUrl = new URL(`https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeVideoId)}`);
+  playerUrl.searchParams.set("enablejsapi", "1");
+  playerUrl.searchParams.set("playsinline", "1");
+  playerUrl.searchParams.set("origin", targetWindow.location.origin);
+  element.src = playerUrl.toString();
   let initialized = false;
   const initialize = () => {
     if (initialized) return;
@@ -252,8 +278,6 @@ export function mountOfficialPlayer(
       return;
     }
     new targetWindow.YT.Player(element, {
-      videoId: youtubeVideoId,
-      playerVars: { enablejsapi: 1, origin: targetWindow.location.origin, playsinline: 1 },
       events: {
         onReady: (event) => resolveReady(event.target),
         onStateChange: () => undefined,

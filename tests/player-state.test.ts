@@ -68,6 +68,46 @@ describe("truthful player states", () => {
     expect(fake.cueVideoById).toHaveBeenCalledWith({ videoId: authorization.youtube_video_id, startSeconds: 46 });
   });
 
+  it("waits for transient missing video data after cue before settling", async () => {
+    let state = -1;
+    let videoId = "j_w8EvCJ6mU";
+    let seconds = 0;
+    let missingVideoDataReads = 0;
+    let firstCorrectReadAt: number | undefined;
+    let elapsed = 0;
+    const fake = {
+      getCurrentTime: () => seconds,
+      getPlayerState: () => state,
+      getVideoData: () => {
+        if (missingVideoDataReads > 0) {
+          missingVideoDataReads -= 1;
+          return undefined;
+        }
+        if (videoId === authorization.youtube_video_id) firstCorrectReadAt ??= elapsed;
+        return { video_id: videoId };
+      },
+      seekTo: vi.fn(),
+      cueVideoById: vi.fn(({ videoId: nextVideoId, startSeconds }: { videoId: string; startSeconds: number }) => {
+        videoId = nextVideoId;
+        seconds = startSeconds;
+        state = 5;
+        if (missingVideoDataReads === 0) missingVideoDataReads = 8;
+      }),
+    };
+    const player = new YouTubeOfficialPlayer(
+      Promise.resolve(fake),
+      async (milliseconds) => { elapsed += milliseconds; },
+      500,
+      100,
+      () => elapsed,
+    );
+    await expect(player.playMoment(authorization, new AbortController().signal))
+      .resolves.toEqual({ status: "cued", observed_seconds: null, player_state: "cued" });
+    expect(firstCorrectReadAt).toBeDefined();
+    expect(elapsed).toBeGreaterThanOrEqual((firstCorrectReadAt ?? 0) + 100);
+    expect(fake.cueVideoById).toHaveBeenCalledTimes(2);
+  });
+
   it("uses one navigation command without changing user playback", async () => {
     const fake = Object.assign(driver({ state: 1, seconds: 0 }), {
       playVideo: vi.fn(),

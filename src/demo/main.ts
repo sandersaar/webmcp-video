@@ -28,7 +28,9 @@ export async function bootDemo(targetWindow: Window = window, targetDocument: Do
   const playerElement = targetDocument.getElementById("official-player");
   const auditElement = targetDocument.getElementById("audit-panel");
   const flowElement = targetDocument.getElementById("flow-panel");
-  if (!playerElement || !auditElement || !flowElement) throw new Error("demo_markup_missing");
+  if (!playerElement || playerElement.tagName !== "IFRAME" || !auditElement || !flowElement) {
+    throw new Error("demo_markup_missing");
+  }
 
   const lifecycle = new PageToolLifecycle();
   const references = new ReferenceVault(config.page_mapping);
@@ -36,7 +38,7 @@ export async function bootDemo(targetWindow: Window = window, targetDocument: Do
   const player = mountOfficialPlayer(
     targetWindow,
     targetDocument,
-    playerElement,
+    playerElement as HTMLIFrameElement,
     fixture.videos[0]?.youtube_video_id ?? "",
   );
   const audit = createLocalAudit(auditElement);

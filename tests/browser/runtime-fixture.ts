@@ -8,6 +8,7 @@ export type RuntimeOptions = Readonly<{
   lateAutoplayBlocked?: boolean;
   lateError?: boolean;
   freezeObservation?: boolean;
+  missingVideoDataAfterCueReads?: number;
 }>;
 
 export async function installRuntime(page: Page, options: RuntimeOptions = {}): Promise<void> {
@@ -19,6 +20,8 @@ export async function installRuntime(page: Page, options: RuntimeOptions = {}): 
         videoId: initial.videoId ?? "t82C_EYja18",
         seconds: initial.seconds ?? 0,
         freezeObservation: initial.freezeObservation ?? false,
+        missingVideoDataReads: 0,
+        hasCued: false,
       },
     };
     Object.defineProperty(window, "__webmcpTestRuntime", { configurable: true, value: runtime });
@@ -26,18 +29,24 @@ export async function installRuntime(page: Page, options: RuntimeOptions = {}): 
       configurable: true,
       value: {
         Player: class {
-          constructor(_element: HTMLElement, playerOptions: {
-            videoId: string;
+          constructor(element: HTMLIFrameElement, playerOptions: {
             events: {
               onReady(event: { target: unknown }): void;
               onError(): void;
               onAutoplayBlocked(): void;
             };
           }) {
+            if (element.tagName !== "IFRAME") throw new Error("youtube_iframe_missing");
             const driver = {
               getCurrentTime: () => runtime.driver.seconds,
               getPlayerState: () => runtime.driver.state,
-              getVideoData: () => ({ video_id: runtime.driver.videoId }),
+              getVideoData: () => {
+                if (runtime.driver.missingVideoDataReads > 0) {
+                  runtime.driver.missingVideoDataReads -= 1;
+                  return undefined;
+                }
+                return { video_id: runtime.driver.videoId };
+              },
               seekTo: (seconds: number) => {
                 if (!runtime.driver.freezeObservation) runtime.driver.seconds = seconds;
               },
@@ -45,6 +54,10 @@ export async function installRuntime(page: Page, options: RuntimeOptions = {}): 
                 runtime.driver.videoId = videoId;
                 if (!runtime.driver.freezeObservation) runtime.driver.seconds = startSeconds;
                 runtime.driver.state = 5;
+                if (!runtime.driver.hasCued) {
+                  runtime.driver.hasCued = true;
+                  runtime.driver.missingVideoDataReads = initial.missingVideoDataAfterCueReads ?? 0;
+                }
               },
             };
             queueMicrotask(() => {
