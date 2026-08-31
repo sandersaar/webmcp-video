@@ -1,6 +1,6 @@
 # WebMCP Video
 
-WebMCP Video is a small working example. An AI can search video moments, explain one, and move the official YouTube player there.
+WebMCP Video is a small working example. An AI can search video moments, explain one, and get the official YouTube player ready there.
 
 Try the live demo: [webmcp-video.vercel.app](https://webmcp-video.vercel.app)
 
@@ -8,7 +8,7 @@ The page gives an AI three tools through `document.modelContext`:
 
 1. `search_this_catalog` finds matching moments and returns a `moment_ref` for each result.
 2. `get_moment_context` explains one result. It does not move the player.
-3. `play_moment` moves or prepares the official player at that moment.
+3. `play_moment` gets the official player ready at that moment.
 
 The repository makes no model calls. It has no backend and needs no secrets.
 
